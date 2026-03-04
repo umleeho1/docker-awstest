@@ -59,3 +59,16 @@ services:
       - web-1
       - web-2
       - web-3
+      
+  # 7. DB 기록 전용 일꾼 (Worker) - 방패의 핵심!
+  my-worker:
+    build: .
+    container_name: my-worker
+    command: python worker.py  # 이 컨테이너는 app.py가 아닌 worker.py를 실행합니다.
+    environment:
+      - REDIS_HOST=my-redis
+      - DB_HOST=my-db
+    depends_on:
+      - my-redis
+      - my-db
+    restart: always    

@@ -1,37 +1,24 @@
 import os
 import uuid
 import redis
-import pymysql  # MySQL 접속용
+import json
+import time
 from flask import Flask, request, make_response
 
 app = Flask(__name__)
 
-# [1] Redis 설정 (세션용)
+# [1] Redis 설정 (세션용 + 메시지 큐용)
 redis_host = os.environ.get("REDIS_HOST", "localhost")
 rd = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
-# [2] MySQL 설정 (영구 저장용)
-db_host = os.environ.get("DB_HOST", "localhost")
-
-def get_db_connection():
-    return pymysql.connect(
-        host=db_host,
-        user='root',
-        password='root_password',
-        db='my_login_db',
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
-
 @app.route('/')
 def home():
-    # Nginx가 보낸 진짜 IP 읽어보기 (공부한 내용!)
     user_ip = request.headers.get('X-Real-IP', request.remote_addr)
     session_id = request.cookies.get('my_session_id')
     
     if session_id and rd.exists(session_id):
         user_name = rd.get(session_id)
-        return f"<h1>[Main Server]</h1> 접속 IP: {user_ip}<br>환영합니다, {user_name}님! (데이터: Redis+MySQL)"
+        return f"<h1>[Main Server]</h1> 접속 IP: {user_ip}<br>환영합니다, {user_name}님! (현재 메시지 큐 가동 중)"
     
     return "로그인이 필요합니다. <a href='/login'>[여기서 로그인]</a>"
 
@@ -40,22 +27,18 @@ def login():
     session_id = str(uuid.uuid4())
     user_name = "Master_User"
     
-    # [3] Redis에 세션 저장 (1시간)
+    # [A] 기존 로직: 세션 저장은 즉시 처리 (0.001초)
     rd.set(session_id, user_name, ex=3600)
     
-    # [4] MySQL에 로그인 기록 남기 (관문 E)
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            # 테이블이 없으면 만들기 (처음 한 번만)
-            cursor.execute("CREATE TABLE IF NOT EXISTS login_logs (id INT AUTO_INCREMENT PRIMARY KEY, user_name VARCHAR(50), login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
-            # 로그인 기록 삽입
-            cursor.execute("INSERT INTO login_logs (user_name) VALUES (%s)", (user_name,))
-        conn.commit()
-    finally:
-        conn.close()
+    # [B] 변경 로직: 무거운 MySQL 기록은 큐(Redis)에 던지기만 함 (방패 역할)
+    # 이제 Flask는 DB 접속이 끝날 때까지 기다리지 않습니다!
+    log_data = {
+        "user_name": user_name,
+        "login_time": time.time()
+    }
+    rd.lpush('login_queue', json.dumps(log_data))
     
-    resp = make_response("로그인 성공 및 DB 기록 완료! <a href='/'>메인으로 가기</a>")
+    resp = make_response("로그인 성공! (상세 기록은 메시지 큐에서 처리 중입니다) <a href='/'>메인으로 가기</a>")
     resp.set_cookie('my_session_id', session_id)
     return resp
 
