@@ -1,0 +1,61 @@
+services:
+  # 1. Redis (세션 저장소)
+  my-redis:
+    image: redis:latest
+    container_name: my-redis
+
+  # 2. MySQL (진짜 DB) - 이게 빠져있어서 에러가 났을 거예요!
+  my-db:
+    image: mysql:8.0
+    container_name: my-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: my_login_db
+    ports:
+      - "3306:3306"
+
+  # 3. 웹 서버 1호기
+  web-1:
+    build: .
+    container_name: web-1
+    environment:
+      - REDIS_HOST=my-redis
+      - DB_HOST=my-db
+    depends_on:
+      - my-redis
+      - my-db
+
+  # 4. 웹 서버 2호기
+  web-2:
+    build: .
+    container_name: web-2
+    environment:
+      - REDIS_HOST=my-redis
+      - DB_HOST=my-db
+    depends_on:
+      - my-redis
+      - my-db
+
+  # 5. 웹 서버 3호기
+  web-3:
+    build: .
+    container_name: web-3
+    environment:
+      - REDIS_HOST=my-redis
+      - DB_HOST=my-db
+    depends_on:
+      - my-redis
+      - my-db
+
+  # 6. 교통경찰 (Nginx) - 관문 D
+  my-nginx:
+    image: nginx:latest
+    container_name: my-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - web-1
+      - web-2
+      - web-3
