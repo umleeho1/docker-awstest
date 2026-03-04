@@ -18,7 +18,7 @@ def home():
     
     if session_id and rd.exists(session_id):
         user_name = rd.get(session_id)
-        return f"<h1>[Main Server]</h1> 접속 IP: {user_ip}<br>환영합니다, {user_name}님! (현재 메시지 큐 가동 중)"
+        return f"<h1>[CI/CD확인]</h1> 접속 IP: {user_ip}<br>환영합니다, {user_name}님! (현재 메시지 큐 가동 중)"
     
     return "로그인이 필요합니다. <a href='/login'>[여기서 로그인]</a>"
 
