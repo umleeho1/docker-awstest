@@ -9,7 +9,7 @@ r = redis.Redis(host=REDIS_HOST, port=6379, db=0)
 @app.route('/')
 def index():
     # 브라우저로 접속했을 때 보여줄 화면
-    return f"Hello! This is [web1] server. 🚀"
+    return f"Hello! This is [ci/cd] server. 🚀"
 
 @app.route('/job', methods=['POST'])
 def create_job():
