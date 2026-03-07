@@ -1,4 +1,3 @@
 flask
 redis
-pymysql
-cryptography
+mysql-connector-python
