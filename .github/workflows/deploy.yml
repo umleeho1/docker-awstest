@@ -33,7 +33,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/my-web
-            # 최신 이미지 받아오기 (sudo 권한 필요할 수 있음)
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/my-web-app:latest
-            # 기존 컨테이너 내리고 새로 띄우기
-            sudo docker compose up -d
+            # 1. 도커 허브에서 최신 이미지를 강제로 새로 받아옴
+            sudo docker compose pull
+            # 2. 기존 컨테이너를 새 이미지로 '강제 재생성' 해서 띄우기
+            sudo docker compose up -d --force-recreate
