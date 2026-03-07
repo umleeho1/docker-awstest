@@ -1,0 +1,39 @@
+name: CI/CD Pipeline
+#가보자잇
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 1. 도커 로그인 (GitHub Secrets에 등록한 변수명을 사용합니다)
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # 2. 빌드 및 푸시
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/my-web-app:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/my-web-app:latest
+
+      # 3. 서버 2대에 동시 배포
+      - name: SSH Remote Deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_WEB1 }},${{ secrets.HOST_WEB2 }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/my-web
+            # 최신 이미지 받아오기 (sudo 권한 필요할 수 있음)
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/my-web-app:latest
+            # 기존 컨테이너 내리고 새로 띄우기
+            sudo docker compose up -d
